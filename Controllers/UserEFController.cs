@@ -10,12 +10,12 @@ namespace DotNetAPI.Controllers;
 [Route("[controller]")]
 public class UserEfController : ControllerBase
 {
-    private DataContextEf _entiryFramework;
+    IUserRepository _userRepository;
     private IMapper _mapper;
 
-    public UserEfController(IConfiguration config)
+    public UserEfController(IConfiguration config, IUserRepository userRepository)
     {
-        _entiryFramework = new DataContextEf(config);
+        _userRepository = userRepository;
         _mapper = new Mapper(new MapperConfiguration(cfg =>
         {
             cfg.CreateMap<UserToAddDto, User>();
@@ -26,27 +26,19 @@ public class UserEfController : ControllerBase
     [HttpGet("GetUsers")]
     public IEnumerable<User> GetUsers()
     {
-        return _entiryFramework.Users.ToList<User>();
+        return _userRepository.GetUsers();
     }
 
     [HttpGet("GetUser/{userId:int}")]
     public User GetUser(int userId)
     {
-        User? user = _entiryFramework.Users
-            .FirstOrDefault(obj => obj.UserId == userId);
-        if (user != null)
-        {
-            return user;
-        }
-
-        throw new Exception("Failed to get user");
+        return _userRepository.GetUser(userId);
     }
 
     [HttpPut]
     public IActionResult UpdateUser(User user)
     {
-        User? userDb = _entiryFramework.Users
-            .FirstOrDefault(obj => obj.UserId == user.UserId);
+        User? userDb = _userRepository.GetUser(user.UserId);
         if (userDb != null)
         {
             userDb.Active = user.Active;
@@ -54,7 +46,7 @@ public class UserEfController : ControllerBase
             userDb.LastName = user.LastName;
             userDb.Email = user.Email;
             userDb.Gender = user.Gender;
-            if (_entiryFramework.SaveChanges() > 0)
+            if (_userRepository.SaveChanges())
             {
                 return Ok();
             }
@@ -74,8 +66,8 @@ public class UserEfController : ControllerBase
         userDb.LastName = user.LastName;
         userDb.Email = user.Email;
         userDb.Gender = user.Gender;
-        _entiryFramework.Add(userDb);
-        if (_entiryFramework.SaveChanges() > 0)
+        _userRepository.AddEntity<User>(userDb);
+        if (_userRepository.SaveChanges())
         {
             return Ok();
         }
@@ -86,12 +78,11 @@ public class UserEfController : ControllerBase
     [HttpDelete("DeleteUser/{userId:int}")]
     public IActionResult DeleteUser(int userId)
     {
-        User? userDb = _entiryFramework.Users
-            .FirstOrDefault(obj => obj.UserId == userId);
+        User? userDb = _userRepository.GetUser(userId);
         if (userDb != null)
         {
-            _entiryFramework.Users.Remove(userDb);
-            if (_entiryFramework.SaveChanges() > 0)
+            _userRepository.RemoveEntity<User>(userDb);
+            if (_userRepository.SaveChanges())
             {
                 return Ok();
             }
